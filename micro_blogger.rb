@@ -1,5 +1,6 @@
 require 'jumpstart_auth'
 require 'certified'
+require 'bitly'
 
 class MicroBlogger
   attr_reader :client
@@ -7,6 +8,8 @@ class MicroBlogger
   def initialize
     puts "Initializing"
     @client = JumpstartAuth.twitter
+    # Added in an instance of the bitly class in the initialize method
+    @bitly = Bitly.new('hungryacademy', 'R_430e9f62250186d2612cca76eee2dbc6')
   end
 
   def tweet(message)
@@ -26,6 +29,10 @@ class MicroBlogger
         when 'dm' then dm parts[1], parts[2..-1].join(' ')
         when 'sp' then spam_my_followers
         when 'et' then everyones_last_tweet
+        # Added s command to shorten url
+        when 's' then shorten parts[1..-1]
+        # Added turl command to tweet with url
+        when 'turl' then tweet(parts[1..-2].join(' ') + " " + shorten(parts[-1]))
         else puts "Sorry I don't know how to (#{command})!"
       end
     end
@@ -48,21 +55,24 @@ class MicroBlogger
   end
 
   def spam_my_followers
-    followers_list().each do |follower|
-      dm follower, 'SPAM FROM WILL!!!'
-    end
+    followers_list().each { |follower| dm follower, 'SPAM FROM WILL!!!' }
   end
 
   def everyones_last_tweet
     friends = sort_followers(@client.friends)
     friends.each do |friend|
-      # find each friends's last message
-      puts friend.screen_name + " said..."
+      # Here I created a timestamp from the friend.status object, then formated it into a nice string on the next line
+      timestamp = friend.status.created_at
+      puts friend.screen_name + " said on " + timestamp.strftime("%A, %b %d") 
       puts friend.status.text
-      # print each friends's screen name
-      # print each friends's message
       puts ""
     end
+  end
+
+  # Here we are starting iteration 4, adding the url shortening service bit.ly
+  def shorten(original_url)
+    # Shortening code
+    @bitly.shorten(original_url).short_url
   end
 end
 
