@@ -1,15 +1,18 @@
 require 'jumpstart_auth'
 require 'certified'
 require 'bitly'
+require 'klout'
 
 class MicroBlogger
-  attr_reader :client
+  attr_reader :client, :bitly
 
   def initialize
     puts "Initializing"
     @client = JumpstartAuth.twitter
     # Added in an instance of the bitly class in the initialize method
     @bitly = Bitly.new('hungryacademy', 'R_430e9f62250186d2612cca76eee2dbc6')
+    # Add in klout api key
+    Klout.api_key = 'xu9ztgnacmjx3bu82warbr3h'
   end
 
   def tweet(message)
@@ -20,19 +23,22 @@ class MicroBlogger
     puts "Welcome to the JSL Twitter Client!"
     command = ""
     while command != 'q'
-      printf "enter command: "
+      printf "enter command ('l' for list of commands): "
       parts = gets.chomp.split(' ')
       command = parts[0]
       case command
         when 'q' then puts 'Goodbye!'
+        when 'l' then command_list
         when 't' then tweet parts[1..-1].join(' ')
         when 'dm' then dm parts[1], parts[2..-1].join(' ')
-        when 'sp' then spam_my_followers
+        when 'sp' then spam_my_followers parts[1..-1].join(' ')
         when 'et' then everyones_last_tweet
         # Added s command to shorten url
         when 's' then shorten parts[1..-1]
         # Added turl command to tweet with url
         when 'turl' then tweet(parts[1..-2].join(' ') + " " + shorten(parts[-1]))
+        # Added klout command to find klout of friends
+        when 'klout' then klout_score
         else puts "Sorry I don't know how to (#{command})!"
       end
     end
@@ -47,15 +53,15 @@ class MicroBlogger
   end
 
   def followers_list
-    @client.followers.collect { |follower| follower.screen_name}
+    @client.followers.collect {|follower| follower.screen_name}
   end
 
-  def sort_followers(friends)
-    friends.sort_by {|friend|friend.screen_name.downcase}     
+  def sort_followers(followers)
+    followers.sort_by {|follower| follower.screen_name.downcase}     
   end
 
-  def spam_my_followers
-    followers_list().each { |follower| dm follower, 'SPAM FROM WILL!!!' }
+  def spam_my_followers(message)
+    followers_list().each { |follower| dm follower, message }
   end
 
   def everyones_last_tweet
@@ -73,6 +79,29 @@ class MicroBlogger
   def shorten(original_url)
     # Shortening code
     @bitly.shorten(original_url).short_url
+  end
+
+  def klout_score
+    friends = @client.friends.collect {|f| f.screen_name}
+    friends.each do |friend|
+      identity = Klout::Identity.find_by_screen_name(friend)
+      user = Klout::User.new(identity.id)
+      klout = user.score.score
+      puts "#{friend} has a klout of..."
+      puts klout
+      puts "" 
+    end
+  end
+
+  def command_list
+    puts "    t <tweet message>                   : Send a new Tweet"
+    puts "    dm <username> <direct message>      : Send a <direct message> to <username>"
+    puts "    sp <message>                        : Spam all your followers with <message>"
+    puts "    et                                  : Print all of your friends most recent Tweets"
+    puts "    s <url>                             : Shorten the given <url>"
+    puts "    turl <tweet message> <url>          : Send a new tweet message with a shortened url"
+    puts "    klout                               : See the klout score of all your friends"
+    puts "    q                                   : quit"
   end
 end
 
