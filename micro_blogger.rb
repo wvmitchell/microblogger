@@ -43,6 +43,10 @@ class MicroBlogger
     @client.followers.collect { |follower| follower.screen_name}
   end
 
+  def sort_followers(friends)
+    friends.sort_by {|friend|friend.screen_name.downcase}     
+  end
+
   def spam_my_followers
     followers_list().each do |follower|
       dm follower, 'SPAM FROM WILL!!!'
@@ -50,7 +54,7 @@ class MicroBlogger
   end
 
   def everyones_last_tweet
-    friends = @client.friends
+    friends = sort_followers(@client.friends)
     friends.each do |friend|
       # find each friends's last message
       puts friend.screen_name + " said..."
